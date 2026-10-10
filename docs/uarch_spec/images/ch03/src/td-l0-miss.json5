@@ -1,0 +1,30 @@
+{ signal: [
+  { name: 'clk', wave: 'p................' },
+  {},
+  { name: 'icache_req_valid',          wave: '1.0....|..1.0....' },
+  { name: 'icache_req',                wave: '3.x....|..3.x....', data: ['M0, TH0 @ PC','M0, TH0 @ PC retry'] },
+  { name: 'icache_req_ready (grant)',  wave: '010....|...10....' },
+  {},
+  { name: 'f1_req_valid[M0, TH0]',       wave: '010....|...10....' },
+  { name: 'grant (8:1 LRU arbiter)',   wave: 'x3x....|...4x....', data: ['M0, TH0','M0, TH0 retry'] },
+  { name: 'L0 stage (M0, TH0)',          wave: 'x22222x|...22222x', data: ['F0','F1','F2','F3','F4','F0','F1','F2','F3','F4'] },
+  { name: 'f4_grant',                  wave: 'x....3x|.......3x', data: ['M0, TH0','M0, TH0'] },
+  {},
+  { name: 'icache_resp_valid',         wave: '0....10|.......10' },
+  { name: 'icache_resp_miss',          wave: 'x....1x|.......0x', node: '.....M...........' },
+  { name: 'f4_update_prio',            wave: '0......|.......10', node: '.....N...........' },
+  {},
+  { name: 'f0_miss_state',             wave: '2...22.|.2.......', data: ['Ready','Request','Fill_Wait','Ready'] },
+  { name: 'f0_l1_miss_req_valid',      wave: '0...10.|.........' },
+  { name: 'f0_l1_miss_resp_valid',     wave: '0......|10.......' },
+  { name: 'icache_fill_done',          wave: '0......|.10......' },
+  { name: 'M0, TH0 sleeping',            wave: '0.....1|..0......' }
+ ],
+ edge: ['M-|>N no update on a miss'],
+ group: [
+   { name: 'Core',            from: 'icache_req_valid', to: 'icache_req_ready (grant)' },
+   { name: 'Neighborhood',    from: 'f1_req_valid[M0, TH0]', to: 'f4_update_prio' },
+   { name: 'L0 miss handler', from: 'f0_miss_state', to: 'icache_fill_done' }
+ ],
+ head: { tick: 0 }
+}

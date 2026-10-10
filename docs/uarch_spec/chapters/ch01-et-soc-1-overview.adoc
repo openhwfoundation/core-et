@@ -1,0 +1,249 @@
+// Standalone build: resolve images relative to this file. When included from core-et-uarch.adoc, the main document sets imagesdir.
+ifndef::imagesdir[:imagesdir: ../images]
+ifndef::pdf-theme[:pdf-theme: uarch]
+ifndef::pdf-themesdir[:pdf-themesdir: {docdir}/../themes]
+:sectnums:
+:sectnumlevels: 3
+:xrefstyle: short
+
+[[ch-et-soc-1-overview]]
+== ET-SoC-1 Overview
+
+[[sec-ch1-glance]]
+=== ET-SoC-1 at a Glance
+
+ET-SoC-1 is a many-core RISC-V system-on-chip developed primarily for artificial-intelligence and machine-learning (AI/ML) workloads. It is designed as a flexible, fast and efficient inference engine for ML applications. Its compute resources are arranged in a multi-level hierarchy that delivers high sustained performance on regular, parallelizable workloads, such as those of ML algorithms.
+
+The device integrates 1,093 general-purpose 64-bit RISC-V cores of three types:
+
+* 1,088 ET-Minion cores for ML computation
+* 4 ET-Maxion cores for management and general-purpose tasks
+* 1 Service Processor for boot and device management
+
+The cores are connected to on-die SRAM, external memory and a set of standard interfaces through a mesh network-on-chip (NoC). <<tab-ch1-key-characteristics>> summarizes the device.
+
+[[tab-ch1-key-characteristics]]
+.ET-SoC-1 key characteristics
+[cols="1,3",options="header"]
+|===
+| Item | Description
+
+| ET-Minion cores | 1,088 in-order, dual-threaded RV64IMFC cores, each with an 8-lane vector/tensor unit
+| ET-Maxion cores | 4 single-threaded, superscalar, out-of-order 64-bit RISC-V cores
+| Service Processor | 1 single-threaded core derived from the ET-Minion
+| On-die SRAM | Each Minion Shire's 4 MB Shire Cache can be partitioned by ESRs into L2, a slice of the chip-wide L3, and scratchpad.
+| Interconnect | Mesh NoC with 44 mesh stops
+| External memory | LPDDR4X, 16 channels x 16 bits, up to 4,266 MT/s
+| PCI Express | Gen4, 8 lanes. Endpoint, root complex, or both at once.
+| Other interfaces | eMMC, USB 2.0 OTG, I2C/SMBus, I3C, SPI, UART, GPIO. Debug access through JTAG and a USB 2.0 device port.
+|===
+
+[[sec-ch1-hierarchy]]
+=== The ET-Minion Hierarchy
+
+The ET-Minion cores are organized in three levels, as shown in <<fig-ch1-hierarchy>>:
+
+* *ET-Minion core*
+* *Neighborhood*: 8 ET-Minion cores
+* *Minion Shire*: 4 Neighborhoods (32 ET-Minion cores)
+
+Each level adds resources that are shared by the units it contains. The device contains 34 Minion Shires, which together form the Minion Shire array (<<sec-ch1-shire-array>>).
+
+[[fig-ch1-hierarchy]]
+.ET-Minion hierarchy
+image::ch01/fig-hierarchy.png[ET-Minion hierarchy,width=85%,align=center]
+
+[[sec-ch1-minion]]
+==== ET-Minion Core
+
+The ET-Minion is a dual-threaded, in-order, single-issue 64-bit RISC-V core that implements RV64IMFC. Its main features are:
+
+* Two hardware threads (harts)
+* 4 KB private L1 data cache, partly configurable as scratchpad memory
+* Vector processing unit (VPU) with eight identical lanes operating in lock-step. Each lane contains:
+** Floating-point multiply-add unit (FMA): one 32-bit or two 16-bit operations
+** Two integer multiply-add units (IMA): four 8-bit multiply-accumulates each
+** Integer unit (INT)
+** Transcendental unit (TRANS)
+* Esperanto instruction extensions for vector, tensor, atomic, message, cache-management and fast-synchronization operations
+
+The core consists of four top-level blocks, shown in <<fig-ch1-et-minion>>:
+
+* *Front end (FE)*
+* *Integer pipeline*
+* *L1 data cache and scratchpad*
+* *VPU*
+
+[[fig-ch1-et-minion]]
+.ET-Minion core
+image::ch01/fig-et-minion.drawio.png[ET-Minion core,width=70%,align=center]
+
+[[sec-ch1-neighborhood]]
+==== Neighborhood
+
+A Neighborhood groups eight ET-Minion cores that share the following resources. In <<fig-ch1-neighborhood>>, the L0 micro-caches are labeled "I-Cache".
+
+A Neighborhood also spans two supply-voltage regions. The cores and most of the Neighborhood logic are in the low-voltage region, while the interface towards the Shire Channel and the memory cells that need speed, among them the data RAMs of the L1 instruction cache, are in the high-voltage region (<<sec-ch3-voltage>>).
+
+* *L1 instruction cache*: 32 KB, organized as 128 sets × 4 ways with 64-byte lines. It is shared by all eight cores, and its data RAMs are located outside the Neighborhood.
+* *L0 micro-caches*: two, each shared by four cores. Each holds 16 fully associative cache lines, sits between its cores and the L1 instruction cache, and accesses the L1 instruction cache on a miss.
+* *Page-table walkers (PTWs)*: two, each shared by four cores. Each PTW serves the data caches of its four cores and the instruction-cache side.
+* *Request/response path*: a single path to the memory hierarchy outside the Neighborhood. Requests from the eight data caches, the instruction cache, the two PTWs and, the cooperative TensorLoad/TensorStore units are arbitrated into (256-bit internally which is converted to a 512-bit ET-Link bus).
+* *Performance monitoring unit (PMU)*: twelve 64-bit event counters shared by the eight cores. +
+Eight counters count ET-Minion events and four count Neighborhood events.
+
+* *Cooperative TensorLoad*: coalesces the TensorLoad requests that several cores issue for the same address into a single memory request, and delivers the one response back to every cooperating core. Cores in all four Neighborhoods of a Minion Shire can cooperate; one Neighborhood acts as master and sends the combined request.
+* *Cooperative TensorStore*: combines the partial writes of cooperating cores into one Shire Cache write, and replicates the acknowledgement to every core that took part. Cores cooperate in two fixed groups, cores 0 to 3 and cores 4 to 7, in one of three modes:
+** *Quad-128*: 128 bits from each of four cores, forming a full 512-bit cache line
+** *Pair-256*: 256 bits from each of two cores, forming a full 512-bit cache line
+** *Pair-128*: 128 bits from each of two cores, forming half a cache line
++
+Each core holds its request until every core of the group has presented one, so operations of different modes cannot mix.
+* *Fast Local Messaging Network (FLN)*: carries messages between cores of the same Neighborhood directly, instead of sending them out through the request path and back in through the response path. Connections are not all-to-all; they follow the pattern used by the tensor reduction instructions, and a message arriving over this network takes priority over the other responses to that core.
+* *Fast local barrier (FLB) path*
+* *Neighborhood ESRs*
+* *Interrupts*: routes the external, timer and software interrupt lines to the cores, and delivers the inter-processor interrupts (IPIs). A software write to a Shire ESR raises a machine software interrupt for a hart, or a redirect IPI that sends the selected harts to the PC held in the Neighborhood `ipi_redirect_pc` ESR.
+
+
+[[fig-ch1-neighborhood]]
+.Neighborhood
+image::ch01/fig-neighborhood.png[Neighborhood,width=100%,align=center]
+
+[[sec-ch1-shire]]
+==== Minion Shire
+
+A Minion Shire groups four Neighborhoods (<<fig-ch1-minion-shire>>). It also contains:
+
+* *Shire Cache*: 4 MB, in four 1 MB banks. Programmable ESRs divide the cache into three kinds of partition:
+** L2 cache, private to the Shire
+** Slice of the chip-wide distributed L3 cache
+** Scratchpad memory
+* *Crossbar*: Request and response crossbars connect four Neighborhoods and the RBOX port to the four Shire Cache banks and the UC block. Each Neighborhood has one request and response port into the Shire Cache, and each bank accepts at most one request per cycle. The crossbar also connects the Neighborhoods to the un-cached (UC) block.
+* *Uncached (UC) block*: receives the Neighborhood requests that are not sent to the Shire Cache banks. It handles uncacheable accesses, contains the fast local barrier (FLB) and fast local credit counter (FCC) units, and delivers messages sent between ET-Minion cores of different Shires. 
+* *ESR banks*: the Esperanto System Registers (ESRs) configure the blocks in the Shire.
+* *NoC interface*: L2 misses and uncacheable accesses leave the Shire here, bound for other Shires or the memory controllers.
+
+[[fig-ch1-minion-shire]]
+.Minion Shire
+image::ch01/fig-minion-shire.png[Minion Shire,width=85%,align=center]
+
+[[sec-ch1-shire-array]]
+==== Minion Shire Array
+
+The 34 Minion Shires, 1,088 ET-Minion cores in total, form the Minion Shire array. The roles of the Shires are assigned by software:
+
+* *Compute*: 32 Minion Shires operate in parallel as the compute array.
+* *Master (management)*: one Minion Shire receives work and distributes it to the compute array.
+* *Spare*: one Minion Shire.
+
+All Minion Shires are identical in hardware, so any Minion Shire can take any of these roles.
+
+[[sec-ch1-maxion-sp]]
+=== ET-Maxion and Service Processor
+
+In addition to the ET-Minion cores, the device contains two other core types. Both are located in the I/O Shire (<<sec-ch1-ioshire>>). This document does not describe them beyond this section.
+
+[[sec-ch1-maxion]]
+==== ET-Maxion Cores
+
+The ET-Maxion is a single-threaded, superscalar, out-of-order 64-bit RISC-V core intended for management and general-purpose tasks. The device contains four identical ET-Maxion cores. Together with a 4 MB shared L2/L3 cache they form the Maxion Neighborhood, and a system bus and coherency hub in the I/O Shire connects them. <<fig-ch1-et-maxion>> shows the ET-Maxion pipeline.
+
+[[fig-ch1-et-maxion]]
+.ET-Maxion pipeline
+image::ch01/fig-et-maxion.png[ET-Maxion pipeline,width=80%,align=center]
+
+[[sec-ch1-sp]]
+==== Service Processor
+
+The Service Processor (SP) is a single-threaded ET-Minion core without the vector/tensor extensions. It has its own ROM and a 1 MB scratchpad SRAM, but none of the Neighborhood or Shire shared resources.
+
+* *Boot.* The SP is the first major block released from reset. It executes the boot code from ROM and initializes the device interfaces, including DDR, PCIe and USB.
+* *Run time.* It provides management services for the whole device.
+* *Access.* The SP can access every resource on the device, and some resources are accessible only to it.
+
+The I/O Shire also contains a hardware root of trust, and six secure mailboxes for communication between four agents:
+
+* Service Processor
+* Master Minion Shire
+* ET-Maxions
+* PCIe host
+
+[[sec-ch1-mesh]]
+=== Mesh Network-on-Chip
+
+The mesh NoC is the top-level interconnect of ET-SoC-1 and connects all Shires. <<fig-ch1-full-chip>> shows the device with the Shire array on the mesh, the external memory and PCIe interfaces, and the peripheral, Service Processor and debug networks.
+
+[[fig-ch1-full-chip]]
+.ET-SoC-1 block diagram
+image::ch01/fig-full-chip.png[ET-SoC-1 block diagram,width=100%,align=center]
+
+[[sec-ch1-mesh-topology]]
+==== Mesh Topology and Mesh Stops
+
+The mesh is organized as an 8 × 6 grid, and each Shire attaches to it at a mesh stop. The Memory Shires occupy the east and west edges, four on each side, which leaves the corners of the grid unoccupied. The result is 44 mesh stops, listed in <<tab-ch1-shire-types>>.
+
+[[tab-ch1-shire-types]]
+.Shires on the mesh
+[cols="2,1,4",options="header"]
+|===
+| Shire | Count | Contents
+
+| Minion Shire | 34 | 32 ET-Minion cores and a 4 MB Shire Cache
+| Memory Shire | 8 | LPDDR4X memory controller
+| PCIe Shire | 1 | PCIe controllers and PHY
+| I/O Shire | 1 | ET-Maxions, Service Processor and peripherals
+| *Total* | *44* |
+|===
+
+[[sec-ch1-memshire]]
+==== Memory Shires
+
+Each Memory Shire contains a 32-bit LPDDR4X PHY and two memory controllers, each driving one 16-bit channel achieving 4,266 MT/s/channel.
+The Memory Shires also support global atomic operations.
+
+[[sec-ch1-pcieshire]]
+==== PCIe Shire
+
+The PCIe Shire contains two dual-mode PCIe Gen4 controllers that share an 8-lane PHY. It supports three lane configurations:
+
+* Single 8-lane endpoint or root complex
+* Single 4-lane endpoint or root complex
+* 4-lane endpoint together with a 4-lane root complex
+
+The interface is normally factory-configured as an endpoint.
+
+[[sec-ch1-ioshire]]
+==== I/O Shire
+
+The I/O Shire contains the ET-Maxions and the Service Processor (<<sec-ch1-maxion-sp>>). It also contains the device peripherals, which are grouped on three networks according to which agents may access them.
+
+* *Service Processor network.* Accessible only to the SP. It contains:
+** SPI, including the boot-flash controller
+** I2C, including the link to the external power-management controller
+** UART, including the SP console
+** GPIO, timers, watchdog and boot control
+* *Peripheral network.* Shared by the SP, the ET-Maxions and the master Minion Shire. It contains:
+** eMMC, USB 2.0 OTG, I2C/SMBus, I3C, SPI and UART
+** GPIO, timers and watchdog
+* *Debug network.* Provides debug access through JTAG and a USB 2.0 device port.
+
+[[sec-ch1-memmap]]
+=== Memory Map
+
+[[sec-ch1-card]]
+=== ET-SoC-1 Accelerator Card
+
+ET-SoC-1 operates as an accelerator attached to a host system over PCI Express. It is mounted on a PCIe add-in card (<<fig-ch1-pcie-card>>) with the following features:
+
+* PCIe x16 card-edge connector, with an 8-lane Gen4 interface to ET-SoC-1
+* ET-SoC-1 soldered to the card
+* Four LPDDR4X devices forming a 256-bit memory interface
+* 64 GB eMMC flash memory
+* USB connectors for the ET-SoC-1 device and debug ports and for a UART interface, and a JTAG connector
+* DIP switches that select the boot options
+
+Multiple ET-SoC-1 devices can also be integrated on a single card.
+
+[[fig-ch1-pcie-card]]
+.ET-SoC-1 PCIe card
+image::ch01/fig-pcie-card.png["ET-SoC-1 PCIe card",width=70%,align=center]

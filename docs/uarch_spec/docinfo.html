@@ -1,0 +1,18 @@
+<style>
+/* Centered figure captions. */
+.imageblock > .title { text-align: center; }
+
+/* Slightly wider content area than the default 62.5em, so the side margins
+   are smaller without making the lines hard to read. */
+@media screen and (min-width: 768px) {
+  #header, #content, #footnotes, #footer { max-width: 75em; }
+}
+
+/* Inline signal and module names, in the same red the PDF theme uses
+   (asciidoctor-pdf codespan.font_color = B12146). */
+:not(pre) > code {
+  color: #b12146;
+  background: none;
+  font-weight: 400;
+}
+</style>

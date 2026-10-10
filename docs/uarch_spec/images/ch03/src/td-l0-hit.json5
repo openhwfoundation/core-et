@@ -1,0 +1,25 @@
+{ signal: [
+  { name: 'clk', wave: 'p........' },
+  {},
+  { name: 'icache_req_valid',         wave: '1.0......' },
+  { name: 'icache_req',               wave: '3.x......', data: ['M0, TH0 @ PC'] },
+  { name: 'icache_req_ready (grant)', wave: '010......' },
+  {},
+  { name: 'f1_req_valid[M0, TH0]',      wave: '010......' },
+  { name: 'grant (8:1 LRU arbiter)',  wave: 'x3x......', data: ['M0, TH0'], node: '.A.......' },
+  { name: 'L0 stage (M0, TH0)',         wave: 'x22222x..', data: ['F0','F1','F2','F3','F4'] },
+  { name: 'f4_grant',                 wave: 'x....3x..', data: ['M0, TH0'], node: '.....B...' },
+  {},
+  { name: 'icache_resp_valid',        wave: '0....10..' },
+  { name: 'icache_resp_miss',         wave: 'x....0x..' },
+  { name: 'icache_resp',              wave: 'x....3x..', data: ['block'] },
+  { name: 'f4_update_prio',           wave: '0....10..' },
+  { name: 'LRU priority',             wave: '2.....2..', data: ['M0, TH0 highest','M0, TH0 behind the others'] }
+ ],
+ edge: ['A-|>B grant carried to F4'],
+ group: [
+   { name: 'Core',         from: 'icache_req_valid',  to: 'icache_req_ready (grant)' },
+   { name: 'Neighborhood', from: 'f1_req_valid[M0, TH0]', to: 'LRU priority' }
+ ],
+ head: { tick: 0 }
+}

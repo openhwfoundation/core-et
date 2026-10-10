@@ -1,0 +1,16 @@
+{ signal: [
+  { name: 'clk', wave: 'p...........' },
+  { name: 'thread stage', wave: 'x22...222222', data: ['F0','F1 (waiting)','F0','F1','F1','F2','F3','F4'] },
+  {},
+  { name: 'f0_icache_req_valid', wave: '010...10....' },
+  { name: 'f1_icache_req', wave: 'x.3...x4.x..', data: ['old request (cancelled)', 'new'] },
+  { name: 'f1_icache_req_ready', wave: '0....10.10..' },
+  {},
+  { name: 'f0_core_req_valid', wave: '0..10.......' },
+  { name: 'cancel held', wave: '0..1..0.....' },
+  { name: 'token in F2', wave: '0........10.' }
+ ],
+ 
+ head: { tick: 0 },
+ config: { hscale: 2 }
+}

@@ -1,0 +1,36 @@
+{ signal: [
+  { name: 'clk', wave: 'p...........' },
+  {},
+  { name: 'M0 F1 request register',   wave: '3.4.x.......', data: ['TH0','TH1'] },
+  { name: 'M1 F1 request register',   wave: '3..x........', data: ['TH0'] },
+  { name: 'M2 F1 request register',   wave: '3....x......', data: ['TH0'] },
+  { name: 'M3 F1 request register',   wave: '3.....x.....', data: ['TH0'] },
+  { name: 'icache_req_ready (accepted)', wave: 'x55555x.....', data: ['M0, TH0','M1, TH0','M0, TH1','M2, TH0','M3, TH0'] },
+  {},
+  { name: 'f1_req_valid[M0, TH0]', wave: '010.........' },
+  { name: 'f1_req_valid[M0, TH1]', wave: '0..10.......' },
+  { name: 'f1_req_valid[M1, TH0]', wave: '01.0........' },
+  { name: 'f1_req_valid[M2, TH0]', wave: '01...0......' },
+  { name: 'f1_req_valid[M3, TH0]', wave: '01....0.....' },
+  {},
+  { name: 'grant (8:1 LRU arbiter)', wave: 'x33333x.....', data: ['M0, TH0','M1, TH0','M0, TH1','M2, TH0','M3, TH0'] },
+  { name: 'LRU order (highest first)', wave: '2.....22222.', data: ['01234567','12345670','13456702','34567021','35670214','35702146'] },
+  {},
+  { name: 'F0 arbitration',          wave: 'x33333x.....', data: ['M0, TH0','M1, TH0','M0, TH1','M2, TH0','M3, TH0'] },
+  { name: 'F1 iTLB (f1_grant)',      wave: 'x.33333x....', data: ['M0, TH0','M1, TH0','M0, TH1','M2, TH0','M3, TH0'] },
+  { name: 'F2 tag + PMA (f2_grant)', wave: 'x..33333x...', data: ['M0, TH0','M1, TH0','M0, TH1','M2, TH0','M3, TH0'] },
+  { name: 'F3 data array (f3_grant)',wave: 'x...33333x..', data: ['M0, TH0','M1, TH0','M0, TH1','M2, TH0','M3, TH0'] },
+  { name: 'F4 response (f4_grant)',  wave: 'x....33333x.', data: ['M0, TH0','M1, TH0','M0, TH1','M2, TH0','M3, TH0'] },
+  { name: 'grant to response',       wave: 'x3...x......', data: ['4 cycles'] },
+  {},
+  { name: 'f4_resp_valid',  wave: '0....1....0.' },
+  { name: 'f4_resp_miss',   wave: 'x....0....x.' },
+  { name: 'f4_resp',        wave: 'x....44444x.', data: ['block','block','block','block','block'] },
+  { name: 'f4_update_prio', wave: '0....1....0.' }
+ ],
+ group: [
+   { name: 'Core',         from: 'M0 F1 request register', to: 'icache_req_ready (accepted)' },
+   { name: 'Neighborhood', from: 'f1_req_valid[M0, TH0]',    to: 'f4_update_prio' }
+ ],
+ head: { tick: 0 }
+}

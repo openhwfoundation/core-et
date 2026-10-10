@@ -1,0 +1,12 @@
+{ signal: [
+  { name: 'clk', wave: 'p.......' },
+  { name: 'id_core_stall[1]', wave: '0..1.0..', node: '...A....' },
+  { name: 'f7_thread_awake[1]', wave: '1...0.1.', node: '....B...' },
+  { name: 'scheduler selection', wave: '22222222', data: ['T1','T0','T1','T0','T0','T0','T1','T0'] },
+  { name: 'id_inst_thread_id', wave: 'x2222222', data: ['T1','T0','T1','T0','T0','T0','T1'] },
+  { name: 'id_inst_valid', wave: '1.......' }
+ ],
+ edge: ['A~>B registered'],
+ head: { tick: 0 },
+ config: { hscale: 2 }
+}

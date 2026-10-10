@@ -1,0 +1,23 @@
+# Read the Docs build configuration.
+# Builds the CORE-ET micro-architecture reference (AsciiDoc) with Asciidoctor
+# and publishes the HTML, together with the PDF and HTML downloads.
+# https://docs.readthedocs.com/platform/stable/build-customization.html
+
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    ruby: "3.3"
+    python: "3.12"
+  commands:
+    # Toolchain: Asciidoctor for HTML and PDF.
+    - gem install --no-document asciidoctor asciidoctor-pdf rouge
+    # HTML: the page Read the Docs serves, plus the figures it references.
+    - mkdir -p $READTHEDOCS_OUTPUT/html
+    - asciidoctor -a rtd -D $READTHEDOCS_OUTPUT/html -o index.html docs/uarch_spec/core-et-uarch.adoc
+    - cp -r docs/uarch_spec/images $READTHEDOCS_OUTPUT/html/
+    # Downloads offered at the top of the page.
+    - asciidoctor-pdf -o $READTHEDOCS_OUTPUT/html/core-et-uarch.pdf docs/uarch_spec/core-et-uarch.adoc
+    # The page itself, offered again as a standalone download.
+    - cp $READTHEDOCS_OUTPUT/html/index.html $READTHEDOCS_OUTPUT/html/core-et-uarch.html

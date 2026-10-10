@@ -1,0 +1,10 @@
+{ signal: [
+  { name: 'clk', wave: 'p...........' },
+  { name: 'f0_core_req_valid', wave: '010.........', node: '.A..........' },
+  { name: 'fetch PC', wave: '3.4.........', data: ['old', 'target'] },
+  { name: 'thread stage', wave: 'x.2222222222', data: ['F0','F1','F1','F2','F3','F4','F5','F6','F7','ID'] },
+  { name: 'id_inst_valid', wave: '1.0........1', node: '...........B' }
+ ],
+ head: { tick: 0 },
+ config: { hscale: 2 }
+}

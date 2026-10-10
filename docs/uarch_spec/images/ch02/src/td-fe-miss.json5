@@ -1,0 +1,18 @@
+{ signal: [
+  { name: 'clk', wave: 'p..............' },
+  { name: 'thread stage', wave: 'x222222222..222', data: ['F0','F1','F1','F2','F3','F4','F5','F6','sleep','F0','F1','F1'] },
+  {},
+  { name: 'f0_icache_req_valid', wave: '010.........10.', node: '............D..' },
+  { name: 'f1_icache_req_valid', wave: '0.1.0........1.' },
+  { name: 'f1_icache_req_ready', wave: '0..10.........1' },
+  { name: 'f5_icache_resp_valid', wave: '0......10......' },
+  { name: 'f5_icache_resp_miss', wave: 'x......1x......', node: '.......A.......' },
+  {},
+  { name: 'f0_miss_pending (sleep)', wave: '0........1...0.', node: '.........B.....' },
+  { name: 'f6_icache_fill_done', wave: '0..........10..' },
+  { name: 'fill done (registered)', wave: '0...........10.', node: '............C..' }
+ ],
+ edge: ['A~>B sleep', 'C-|>D retry'],
+ head: { tick: 0 },
+ config: { hscale: 2 }
+}
