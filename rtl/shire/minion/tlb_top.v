@@ -325,9 +325,9 @@ assign tlb_miss = vm_enabled && ~tlb_cache_hit;
 // Permission checks
 // -----------------
 // Check privilege mode and permission properties
-assign priv_ok = privilege_mode == `CSR_PRV_U ? tlb_cache_rdata.u : // If privilege mode is user, privilege is OK when page is accessible to user mode
-                 req_data.status.sum          ? 1'b1 :              // If privilege mode is not user mode, if sum is enabled, privilege is always OK
-                                                ~tlb_cache_rdata.u; // Otherwise, privilege is OK when page is not accessible to user mode
+assign priv_ok = privilege_mode == `CSR_PRV_U ? tlb_cache_rdata.u   : // If privilege mode is user, privilege is OK when page is accessible to user mode
+                 req_data.status.sum & !req_data.instruction ? 1'b1 : // If privilege mode is not user mode, privilege is always OK when SUM is enabled and not fetching instructions
+                                                ~tlb_cache_rdata.u;   // Otherwise, privilege is OK when page is not accessible to user mode
 assign w_perm_ok = priv_ok & tlb_cache_rdata.sw;
 // Read permission to readable page or read permission to executable page (only if mxr=1)
 assign r_perm_ok = priv_ok & (tlb_cache_rdata.sr | (req_data.status.mxr & tlb_cache_rdata.sx));
