@@ -86,6 +86,16 @@ function automatic logic [TLB_CACHE_IDX_SZ-1:0] tlb_index(logic [NR_MINIONS_L-1:
   end
 endfunction
 
+function automatic logic [`PA_TRANS_RANGE] addr_ppn(logic [`VA_TRANS_RANGE] vpn,
+                                                    tlb_entry_type typ,
+                                                    logic [`PA_TRANS_RANGE] tlb_cache_ppn);
+  case (typ)
+    tlb_entry_type_2M: addr_ppn = {tlb_cache_ppn[`PA_MSB : (`PTW_PG_IDX_SZ + `VA_UNTRANS_SIZE)], vpn[`VA_UNTRANS_SIZE +: `PTW_PG_IDX_SZ]};
+    tlb_entry_type_1G: addr_ppn = {tlb_cache_ppn[`PA_MSB : (2 * `PTW_PG_IDX_SZ + `VA_UNTRANS_SIZE)], vpn[`VA_UNTRANS_SIZE +: (2 * `PTW_PG_IDX_SZ)]};
+    default:           addr_ppn = tlb_cache_ppn;
+  endcase
+endfunction
+
 // INTERNAL DECLARATIONS
 logic                         coop_mode_reg;
 logic                         tlb_invalidate_reg;
@@ -349,7 +359,7 @@ always_comb begin
     resp_data.ppn = req_data.vpn[`PA_TRANS_RANGE];
   end else begin
     // Read cache data
-    resp_data.ppn = tlb_cache_rdata.ppn;
+    resp_data.ppn = addr_ppn(req_data.vpn, vmspagesize, tlb_cache_rdata.ppn);
   end
 end
 
