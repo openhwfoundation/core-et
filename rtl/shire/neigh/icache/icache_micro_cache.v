@@ -190,7 +190,7 @@ module icache_micro_cache #(
       f0_prefetch_done_next = 1'b0;
 
       // When prefetch request is accepted go check tag hit
-      if (f0_prefetch_req_ready)
+      if(f0_prefetch_req_access)
         f0_prefetch_state_next = icache_prefetch_state_Check_Hit;
     end else if (f0_prefetch_state == icache_prefetch_state_Check_Hit) begin
       if (f2_valid & f2_is_prefetch) begin
